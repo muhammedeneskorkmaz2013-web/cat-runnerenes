@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Agent Escape - 3D Endless Runner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* UI Overlay */
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Start Screen */
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #startScreen h1 {
+            font-size: 64px;
+            color: #ff0040;
+            text-shadow: 0 0 20px rgba(255, 0, 64, 0.8);
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+        }
+
+        #startScreen .story {
+            max-width: 600px;
+            text-align: center;
+            color: #fff;
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        #startScreen button {
+            margin-top: 30px;
+            padding: 20px 60px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #ff0040 0%, #ff6b6b 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            pointer-events: all;
+            box-shadow: 0 10px 30px rgba(255, 0, 64, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        #startScreen button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 0, 64, 0.6);
+        }
+
+        #startScreen button:active {
+            transform: translateY(0);
+        }
+
+        /* Game Over Screen */
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        #gameOverScreen h2 {
+            font-size: 72px;
+            color: #ff0040;
+            text-shadow: 0 0 30px rgba(255, 0, 64, 1);
+            margin-bottom: 20px;
+        }
+
+        #gameOverScreen .finalScore {
+            font-size: 36px;
+            color: #fff;
+            margin: 20px;
+        }
+
+        #gameOverScreen button {
+            margin-top: 30px;
+            padding: 20px 60px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            pointer-events: all;
+            box-shadow: 0 10px 30px rgba(0, 153, 255, 0.4);
+            transition: transform 0.2s;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        #gameOverScreen button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 153, 255, 0.6);
+        }
+
+        /* Controls Info */
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            #startScreen h1 { font-size: 48px; }
+            #startScreen .story { font-size: 16px; }
+            #gameOverScreen h2 { font-size: 56px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="score">Score: 0</div>
+        
+        <div id="startScreen">
+            <h1>🕵️ AGENT ESCAPE</h1>
+            <div class="story">
+                <p><strong>Mission Briefing:</strong></p>
+                <p>You're a secret agent who just stole classified documents from enemy territory. The security cameras spotted you!</p>
+                <p>Run through the city streets, dodge obstacles, and collect intel files to escape!</p>
+            </div>
+            <button id="startBtn">START MISSION</button>
+            <div id="controls">
+                Desktop: Arrow Keys (←/→ to move, ↑ to jump, ↓ to slide)<br>
+                Mobile: Swipe left/right to move, swipe up to jump, swipe down to slide
+            </div>
+        </div>
+
+        <div id="gameOverScreen">
+            <h2>MISSION FAILED</h2>
+            <div class="finalScore">Score: <span id="finalScoreValue">0</span></div>
+            <button id="restartBtn">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ==================== GAME CONFIGURATION ====================
+        const CONFIG = {
+            lanes: [-3, 0, 3],
+            baseSpeed: 0.15,
+            speedIncrementPerFrame: 0.0002, // Gradual speed increase per frame
+            maxSpeedMultiplier: 3, // Maximum 3x speed
+            distancePointsRate: 0.1, // Points per distance unit
+            jumpHeight: 3.5, // Increased jump height
+            jumpDuration: 600, // Longer jump duration
+            slideDuration: 500,
+            obstacleSpacing: 15,
+            collectibleChance: 0.3
+        };
+
+        // ==================== GAME STATE ====================
+        let gameState = {
+            isPlaying: false,
+            score: 0,
+            speed: CONFIG.baseSpeed,
+            currentLane: 1,
+            isJumping: false,
+            isSliding: false,
+            obstacles: [],
+            collectibles: [],
+            distanceTraveled: 0,
+            lastDistanceScore: 0
+        };
+
+        // ==================== THREE.JS SETUP ====================
+        const canvas = document.getElementById('gameCanvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0a0a1e, 20, 80);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 2, 0);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // ==================== LIGHTING ====================
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -20;
+        dirLight.shadow.camera.right = 20;
+        dirLight.shadow.camera.top = 20;
+        dirLight.shadow.camera.bottom = -20;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // Red chase light
+        const chaseLight = new THREE.SpotLight(0xff0000, 3, 50, Math.PI / 6, 0.5);
+        chaseLight.position.set(0, 10, 15);
+        chaseLight.target.position.set(0, 0, 0);
+        scene.add(chaseLight);
+        scene.add(chaseLight.target);
+
+        // ==================== ROAD & ENVIRONMENT ====================
+        // Main road with better texture
+        const roadGeometry = new THREE.PlaneGeometry(10, 200);
+        const roadMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a2a3e,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const road = new THREE.Mesh(roadGeometry, roadMaterial);
+        road.rotation.x = -Math.PI / 2;
+        road.receiveShadow = true;
+        scene.add(road);
+
+        // Road edges (sidewalks)
+        const sidewalkGeometry = new THREE.PlaneGeometry(5, 200);
+        const sidewalkMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a2e,
+            roughness: 0.8
+        });
+        
+        const leftSidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+        leftSidewalk.rotation.x = -Math.PI / 2;
+        leftSidewalk.position.x = -7.5;
+        leftSidewalk.receiveShadow = true;
+        scene.add(leftSidewalk);
+
+        const rightSidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+        rightSidewalk.rotation.x = -Math.PI / 2;
+        rightSidewalk.position.x = 7.5;
+        rightSidewalk.receiveShadow = true;
+        scene.add(rightSidewalk);
+
+        // Bright lane markers
+        for (let i = -1; i <= 1; i++) {
+            const lineGeometry = new THREE.BoxGeometry(0.15, 0.1, 200);
+            const lineMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffff00,
+                emissive: 0xffff00,
+                emissiveIntensity: 1
+            });
+            const line = new THREE.Mesh(lineGeometry, lineMaterial);
+            line.position.set(i * 3 - 1.5, 0.1, 0);
+            scene.add(line);
+        }
+
+        // Road edge lines (white borders)
+        for (let side of [-5, 5]) {
+            const edgeGeometry = new THREE.BoxGeometry(0.2, 0.1, 200);
+            const edgeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.8
+            });
+            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+            edge.position.set(side, 0.1, 0);
+            scene.add(edge);
+        }
+
+        // City buildings backdrop
+        for (let i = 0; i < 20; i++) {
+            const height = Math.random() * 20 + 10;
+            const buildingGeometry = new THREE.BoxGeometry(4, height, 4);
+            const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x1a1a3e,
+                emissive: 0x000033,
+                emissiveIntensity: 0.2
+            });
+            const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+            building.position.set(
+                (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 10 + 12),
+                height / 2,
+                Math.random() * -100 - 20
+            );
+            building.castShadow = true;
+            scene.add(building);
+
+            // Building windows
+            const windowGeometry = new THREE.BoxGeometry(3.5, height - 2, 3.5);
+            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffff00,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0.5
+            });
+            const windows = new THREE.Mesh(windowGeometry, windowMaterial);
+            windows.position.copy(building.position);
+            scene.add(windows);
+        }
+
+        // ==================== IMPROVED PLAYER CHARACTER ====================
+        const playerGroup = new THREE.Group();
+        
+        // Body (torso)
+        const bodyGeometry = new THREE.BoxGeometry(0.9, 1.6, 0.5);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 1.5;
+        body.castShadow = true;
+        playerGroup.add(body);
+
+        // Tactical vest (red accent)
+        const vestGeometry = new THREE.BoxGeometry(0.95, 1, 0.55);
+        const vestMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff0000,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const vest = new THREE.Mesh(vestGeometry, vestMaterial);
+        vest.position.y = 1.5;
+        vest.castShadow = true;
+        playerGroup.add(vest);
+
+        // Head
+        const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+        const headMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffdbac,
+            roughness: 0.8
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 2.7;
+        head.castShadow = true;
+        playerGroup.add(head);
+
+        // Sunglasses (cool agent look)
+        const glassesGeometry = new THREE.BoxGeometry(0.7, 0.2, 0.1);
+        const glassesMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x000000,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        const glasses = new THREE.Mesh(glassesGeometry, glassesMaterial);
+        glasses.position.set(0, 2.7, 0.4);
+        playerGroup.add(glasses);
+
+        // Glasses frame
+        const frameGeometry = new THREE.BoxGeometry(0.75, 0.25, 0.05);
+        const frameMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x333333,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+        frame.position.set(0, 2.7, 0.38);
+        playerGroup.add(frame);
+
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.25, 1.2, 0.25);
+        const armMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            roughness: 0.7
+        });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.6, 1.5, 0);
+        leftArm.castShadow = true;
+        playerGroup.add(leftArm);
+
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.6, 1.5, 0);
+        rightArm.castShadow = true;
+        playerGroup.add(rightArm);
+
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+        const legMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a2a2a,
+            roughness: 0.8
+        });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.25, 0.4, 0);
+        leftLeg.castShadow = true;
+        playerGroup.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.25, 0.4, 0);
+        rightLeg.castShadow = true;
+        playerGroup.add(rightLeg);
+
+        // Shoes
+        const shoeGeometry = new THREE.BoxGeometry(0.35, 0.2, 0.5);
+        const shoeMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            roughness: 0.6
+        });
+        
+        const leftShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        leftShoe.position.set(-0.25, -0.1, 0.1);
+        leftShoe.castShadow = true;
+        playerGroup.add(leftShoe);
+
+        const rightShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        rightShoe.position.set(0.25, -0.1, 0.1);
+        rightShoe.castShadow = true;
+        playerGroup.add(rightShoe);
+
+        playerGroup.position.set(CONFIG.lanes[gameState.currentLane], 0, 0);
+        scene.add(playerGroup);
+
+        // ==================== CHASER CHARACTER (Enemy Soldier) ====================
+        const chaserGroup = new THREE.Group();
+        
+        // Chaser Body (military uniform)
+        const chaserBodyGeometry = new THREE.BoxGeometry(1, 1.6, 0.5);
+        const chaserBodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a4a2a,
+            roughness: 0.8
+        });
+        const chaserBody = new THREE.Mesh(chaserBodyGeometry, chaserBodyMaterial);
+        chaserBody.position.y = 1.5;
+        chaserBody.castShadow = true;
+        chaserGroup.add(chaserBody);
+
+        // Military vest
+        const chaserVestGeometry = new THREE.BoxGeometry(1.05, 1, 0.55);
+        const chaserVestMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a3a1a,
+            roughness: 0.9
+        });
+        const chaserVest = new THREE.Mesh(chaserVestGeometry, chaserVestMaterial);
+        chaserVest.position.y = 1.5;
+        chaserVest.castShadow = true;
+        chaserGroup.add(chaserVest);
+
+        // Chaser Head
+        const chaserHeadGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+        const chaserHeadMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffdbac,
+            roughness: 0.8
+        });
+        const chaserHead = new THREE.Mesh(chaserHeadGeometry, chaserHeadMaterial);
+        chaserHead.position.y = 2.7;
+        chaserHead.castShadow = true;
+        chaserGroup.add(chaserHead);
+
+        // Military helmet
+        const helmetGeometry = new THREE.SphereGeometry(0.45, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const helmetMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a4a2a,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+        const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+        helmet.position.y = 2.9;
+        helmet.castShadow = true;
+        chaserGroup.add(helmet);
+
+        // Angry eyes
+        const eyeGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const eyeMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.5
+        });
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.15, 2.7, 0.35);
+        chaserGroup.add(leftEye);
+        
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.15, 2.7, 0.35);
+        chaserGroup.add(rightEye);
+
+        // Chaser Arms
+        const chaserArmGeometry = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+        const chaserArmMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a4a2a,
+            roughness: 0.8
+        });
+        
+        const chaserLeftArm = new THREE.Mesh(chaserArmGeometry, chaserArmMaterial);
+        chaserLeftArm.position.set(-0.65, 1.5, 0);
+        chaserLeftArm.castShadow = true;
+        chaserGroup.add(chaserLeftArm);
+
+        const chaserRightArm = new THREE.Mesh(chaserArmGeometry, chaserArmMaterial);
+        chaserRightArm.position.set(0.65, 1.5, 0);
+        chaserRightArm.castShadow = true;
+        chaserGroup.add(chaserRightArm);
+
+        // Chaser Legs
+        const chaserLegGeometry = new THREE.BoxGeometry(0.35, 1.2, 0.35);
+        const chaserLegMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a4a2a,
+            roughness: 0.8
+        });
+        
+        const chaserLeftLeg = new THREE.Mesh(chaserLegGeometry, chaserLegMaterial);
+        chaserLeftLeg.position.set(-0.25, 0.4, 0);
+        chaserLeftLeg.castShadow = true;
+        chaserGroup.add(chaserLeftLeg);
+
+        const chaserRightLeg = new THREE.Mesh(chaserLegGeometry, chaserLegMaterial);
+        chaserRightLeg.position.set(0.25, 0.4, 0);
+        chaserRightLeg.castShadow = true;
+        chaserGroup.add(chaserRightLeg);
+
+        // Chaser Boots
+        const chaserBootGeometry = new THREE.BoxGeometry(0.4, 0.25, 0.6);
+        const chaserBootMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            roughness: 0.7
+        });
+        
+        const chaserLeftBoot = new THREE.Mesh(chaserBootGeometry, chaserBootMaterial);
+        chaserLeftBoot.position.set(-0.25, -0.15, 0.15);
+        chaserLeftBoot.castShadow = true;
+        chaserGroup.add(chaserLeftBoot);
+
+        const chaserRightBoot = new THREE.Mesh(chaserBootGeometry, chaserBootMaterial);
+        chaserRightBoot.position.set(0.25, -0.15, 0.15);
+        chaserRightBoot.castShadow = true;
+        chaserGroup.add(chaserRightBoot);
+
+        // Position chaser behind player
+        chaserGroup.position.set(CONFIG.lanes[gameState.currentLane], 0, 8);
+        scene.add(chaserGroup);
+
+        // ==================== IMPROVED OBSTACLE CREATION ====================
+        function createObstacle(type, zPosition) {
+            const obstacle = new THREE.Group();
+            obstacle.userData = { type };
+
+            if (type === 'barrier') {
+                // High barrier base
+                const baseGeometry = new THREE.BoxGeometry(2.5, 0.3, 0.8);
+                const baseMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.8,
+                    metalness: 0.5
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.position.y = 0.15;
+                base.castShadow = true;
+                obstacle.add(base);
+
+                // Main barrier
+                const barrierGeometry = new THREE.BoxGeometry(2.5, 1.2, 0.6);
+                const barrierMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0xff0000,
+                    emissiveIntensity: 0.5,
+                    roughness: 0.6,
+                    metalness: 0.4
+                });
+                const barrier = new THREE.Mesh(barrierGeometry, barrierMaterial);
+                barrier.position.y = 0.9;
+                barrier.castShadow = true;
+                obstacle.add(barrier);
+
+                // Warning stripes (more visible)
+                for (let i = 0; i < 3; i++) {
+                    const stripeGeometry = new THREE.BoxGeometry(2.6, 0.2, 0.65);
+                    const stripeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0xffff00,
+                        emissive: 0xffff00,
+                        emissiveIntensity: 0.8
+                    });
+                    const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+                    stripe.position.y = 0.4 + (i * 0.4);
+                    obstacle.add(stripe);
+                }
+
+                // Warning lights on top
+                const lightGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const lightMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0xff0000,
+                    emissiveIntensity: 2
+                });
+                const light1 = new THREE.Mesh(lightGeometry, lightMaterial);
+                light1.position.set(-1, 1.6, 0);
+                obstacle.add(light1);
+                
+                const light2 = new THREE.Mesh(lightGeometry, lightMaterial);
+                light2.position.set(1, 1.6, 0);
+                obstacle.add(light2);
+
+            } else if (type === 'lowBarrier') {
+                // Low barrier hanging from top
+                const supportGeometry = new THREE.BoxGeometry(0.3, 2, 0.3);
+                const supportMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x444444,
+                    roughness: 0.7,
+                    metalness: 0.6
+                });
+                
+                const leftSupport = new THREE.Mesh(supportGeometry, supportMaterial);
+                leftSupport.position.set(-1, 2.5, 0);
+                leftSupport.castShadow = true;
+                obstacle.add(leftSupport);
+
+                const rightSupport = new THREE.Mesh(supportGeometry, supportMaterial);
+                rightSupport.position.set(1, 2.5, 0);
+                rightSupport.castShadow = true;
+                obstacle.add(rightSupport);
+
+                // Hanging barrier
+                const lowBarrierGeometry = new THREE.BoxGeometry(2.5, 0.8, 0.6);
+                const lowBarrierMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff6600,
+                    emissive: 0xff3300,
+                    emissiveIntensity: 0.5,
+                    roughness: 0.6,
+                    metalness: 0.4
+                });
+                const lowBarrier = new THREE.Mesh(lowBarrierGeometry, lowBarrierMaterial);
+                lowBarrier.position.y = 1.8;
+                lowBarrier.castShadow = true;
+                obstacle.add(lowBarrier);
+
+                // Warning stripes
+                for (let i = 0; i < 2; i++) {
+                    const stripeGeometry = new THREE.BoxGeometry(2.6, 0.15, 0.65);
+                    const stripeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0xffff00,
+                        emissive: 0xffff00,
+                        emissiveIntensity: 0.8
+                    });
+                    const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+                    stripe.position.y = 1.6 + (i * 0.4);
+                    obstacle.add(stripe);
+                }
+            }
+
+            const lane = CONFIG.lanes[Math.floor(Math.random() * CONFIG.lanes.length)];
+            obstacle.position.set(lane, 0, zPosition);
+            scene.add(obstacle);
+            return obstacle;
+        }
+
+        // ==================== COLLECTIBLE CREATION ====================
+        function createCollectible(zPosition) {
+            const collectible = new THREE.Group();
+
+            // Intel file (document)
+            const fileGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.05);
+            const fileMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 1,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const file = new THREE.Mesh(fileGeometry, fileMaterial);
+            collectible.add(file);
+
+            // Outer glow ring
+            const glowGeometry = new THREE.TorusGeometry(0.8, 0.1, 8, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.5
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.rotation.x = Math.PI / 2;
+            collectible.add(glow);
+
+            // Inner bright core
+            const coreGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const coreMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            collectible.add(core);
+
+            const lane = CONFIG.lanes[Math.floor(Math.random() * CONFIG.lanes.length)];
+            collectible.position.set(lane, 1.5, zPosition);
+            collectible.userData = { rotationSpeed: 0.05 };
+            scene.add(collectible);
+            return collectible;
+        }
+
+        // ==================== GAME LOGIC ====================
+        function spawnObstacles() {
+            const lastObstacle = gameState.obstacles[gameState.obstacles.length - 1];
+            const spawnZ = lastObstacle ? lastObstacle.position.z - CONFIG.obstacleSpacing : -20;
+
+            if (spawnZ > playerGroup.position.z - 100) {
+                const type = Math.random() > 0.5 ? 'barrier' : 'lowBarrier';
+                const obstacle = createObstacle(type, spawnZ);
+                gameState.obstacles.push(obstacle);
+
+                // Spawn collectible
+                if (Math.random() < CONFIG.collectibleChance) {
+                    const collectible = createCollectible(spawnZ - CONFIG.obstacleSpacing / 2);
+                    gameState.collectibles.push(collectible);
+                }
+            }
+        }
+
+        function checkCollisions() {
+            // More lenient collision detection during jump
+            const playerBox = new THREE.Box3().setFromObject(playerGroup);
+            
+            // Shrink hitbox slightly for better gameplay feel
+            const hitboxPadding = 0.2;
+            playerBox.min.x += hitboxPadding;
+            playerBox.max.x -= hitboxPadding;
+            playerBox.min.z += hitboxPadding;
+            playerBox.max.z -= hitboxPadding;
+
+            // Check obstacle collisions
+            for (let obstacle of gameState.obstacles) {
+                if (Math.abs(obstacle.position.z - playerGroup.position.z) < 1.5) {
+                    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+                    
+                    // Only check collision if not jumping high enough
+                    if (obstacle.userData.type === 'barrier') {
+                        // For jump obstacles, ignore collision if player is high enough
+                        if (playerGroup.position.y > 1.8) {
+                            continue; // Player jumped high enough, skip collision
+                        }
+                    } else if (obstacle.userData.type === 'lowBarrier') {
+                        // For slide obstacles, ignore collision if player is low enough
+                        if (gameState.isSliding) {
+                            continue; // Player is sliding, skip collision
+                        }
+                    }
+                    
+                    if (playerBox.intersectsBox(obstacleBox)) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            // Check collectible pickups
+            for (let i = gameState.collectibles.length - 1; i >= 0; i--) {
+                const collectible = gameState.collectibles[i];
+                if (Math.abs(collectible.position.z - playerGroup.position.z) < 1) {
+                    const collectibleBox = new THREE.Box3().setFromObject(collectible);
+                    if (playerBox.intersectsBox(collectibleBox)) {
+                        // Collect!
+                        gameState.score += 10;
+                        updateScore();
+                        scene.remove(collectible);
+                        gameState.collectibles.splice(i, 1);
+                        
+                        // Visual feedback
+                        collectible.scale.set(2, 2, 2);
+                    }
+                }
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `Score: ${Math.floor(gameState.score)}`;
+        }
+
+        function gameOver() {
+            gameState.isPlaying = false;
+            document.getElementById('finalScoreValue').textContent = Math.floor(gameState.score);
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function resetGame() {
+            // Clear obstacles and collectibles
+            gameState.obstacles.forEach(obs => scene.remove(obs));
+            gameState.collectibles.forEach(col => scene.remove(col));
+            
+            gameState = {
+                isPlaying: true,
+                score: 0,
+                speed: CONFIG.baseSpeed,
+                currentLane: 1,
+                isJumping: false,
+                isSliding: false,
+                obstacles: [],
+                collectibles: [],
+                distanceTraveled: 0,
+                lastDistanceScore: 0
+            };
+
+            playerGroup.position.set(CONFIG.lanes[1], 0, 0);
+            playerGroup.rotation.set(0, 0, 0);
+            updateScore();
+        }
+
+        // ==================== PLAYER MOVEMENT ====================
+        function moveLeft() {
+            if (gameState.currentLane > 0 && !gameState.isJumping && !gameState.isSliding) {
+                gameState.currentLane--;
+            }
+        }
+
+        function moveRight() {
+            if (gameState.currentLane < CONFIG.lanes.length - 1 && !gameState.isJumping && !gameState.isSliding) {
+                gameState.currentLane++;
+            }
+        }
+
+        function jump() {
+            if (gameState.isJumping || gameState.isSliding) return;
+            
+            gameState.isJumping = true;
+            const startY = playerGroup.position.y;
+            const startTime = Date.now();
+
+            function animateJump() {
+                if (!gameState.isJumping) return;
+                
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / CONFIG.jumpDuration;
+
+                if (progress < 1) {
+                    // Parabolic jump
+                    const jumpProgress = Math.sin(progress * Math.PI);
+                    playerGroup.position.y = startY + jumpProgress * CONFIG.jumpHeight;
+                    playerGroup.rotation.x = -jumpProgress * 0.3;
+                    requestAnimationFrame(animateJump);
+                } else {
+                    playerGroup.position.y = startY;
+                    playerGroup.rotation.x = 0;
+                    gameState.isJumping = false;
+                }
+            }
+
+            animateJump();
+        }
+
+        function slide() {
+            if (gameState.isJumping || gameState.isSliding) return;
+            
+            gameState.isSliding = true;
+            const startScale = playerGroup.scale.y;
+            playerGroup.scale.y = 0.5;
+            playerGroup.position.y = -0.3;
+            playerGroup.rotation.x = 0.3;
+
+            setTimeout(() => {
+                playerGroup.scale.y = startScale;
+                playerGroup.position.y = 0;
+                playerGroup.rotation.x = 0;
+                gameState.isSliding = false;
+            }, CONFIG.slideDuration);
+        }
+
+        // ==================== CONTROLS ====================
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (!gameState.isPlaying) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    moveLeft();
+                    break;
+                case 'ArrowRight':
+                    moveRight();
+                    break;
+                case 'ArrowUp':
+                    jump();
+                    break;
+                case 'ArrowDown':
+                    slide();
+                    break;
+            }
+        });
+
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!gameState.isPlaying) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal swipe
+                if (deltaX > 30) moveRight();
+                else if (deltaX < -30) moveLeft();
+            } else {
+                // Vertical swipe
+                if (deltaY < -30) jump();
+                else if (deltaY > 30) slide();
+            }
+        }, { passive: true });
+
+        // ==================== UI CONTROLS ====================
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('startScreen').style.display = 'none';
+            resetGame();
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            resetGame();
+        });
+
+        // ==================== GAME LOOP ====================
+        let lastTime = Date.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - lastTime) / 16.67; // Normalize to 60fps
+            lastTime = currentTime;
+
+            if (gameState.isPlaying) {
+                // Gradually increase speed over time (up to max)
+                const maxSpeed = CONFIG.baseSpeed * CONFIG.maxSpeedMultiplier;
+                if (gameState.speed < maxSpeed) {
+                    gameState.speed += CONFIG.speedIncrementPerFrame * deltaTime;
+                }
+
+                // Add points for distance traveled
+                gameState.distanceTraveled += gameState.speed * deltaTime;
+                const distancePoints = Math.floor(gameState.distanceTraveled * CONFIG.distancePointsRate);
+                if (distancePoints > gameState.lastDistanceScore) {
+                    gameState.score += (distancePoints - gameState.lastDistanceScore);
+                    gameState.lastDistanceScore = distancePoints;
+                    updateScore();
+                }
+
+                // Move player to target lane
+                const targetX = CONFIG.lanes[gameState.currentLane];
+                playerGroup.position.x += (targetX - playerGroup.position.x) * 0.2 * deltaTime;
+
+                // Update obstacles and collectibles
+                gameState.obstacles.forEach((obstacle, index) => {
+                    obstacle.position.z += gameState.speed * deltaTime;
+
+                    // Animate warning lights
+                    obstacle.children.forEach(child => {
+                        if (child.material && child.material.emissiveIntensity !== undefined) {
+                            if (child.geometry.type === 'SphereGeometry') {
+                                child.material.emissiveIntensity = 1 + Math.sin(Date.now() * 0.01) * 1;
+                            }
+                        }
+                    });
+
+                    // Remove obstacles that passed
+                    if (obstacle.position.z > playerGroup.position.z + 10) {
+                        scene.remove(obstacle);
+                        gameState.obstacles.splice(index, 1);
+                    }
+                });
+
+                gameState.collectibles.forEach((collectible, index) => {
+                    collectible.position.z += gameState.speed * deltaTime;
+                    collectible.rotation.y += collectible.userData.rotationSpeed * deltaTime;
+
+                    // Animate collectible floating
+                    collectible.position.y = 1.5 + Math.sin(Date.now() * 0.003 + collectible.position.z) * 0.3;
+
+                    // Pulse the glow
+                    collectible.children.forEach(child => {
+                        if (child.geometry.type === 'TorusGeometry') {
+                            child.rotation.z += 0.02 * deltaTime;
+                            child.material.opacity = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+                        }
+                    });
+
+                    // Remove collectibles that passed
+                    if (collectible.position.z > playerGroup.position.z + 10) {
+                        scene.remove(collectible);
+                        gameState.collectibles.splice(index, 1);
+                    }
+                });
+
+                // Spawn new obstacles
+                spawnObstacles();
+
+                // Check collisions
+                checkCollisions();
+
+                // Update chase light
+                chaseLight.position.z = playerGroup.position.z + 15;
+                chaseLight.target.position.copy(playerGroup.position);
+
+                // Animate player running (arm and leg swing)
+                if (!gameState.isJumping && !gameState.isSliding) {
+                    const runCycle = Math.sin(Date.now() * 0.01) * 0.3;
+                    playerGroup.children.forEach(child => {
+                        if (child === playerGroup.children[3]) { // left arm
+                            child.rotation.x = runCycle;
+                        } else if (child === playerGroup.children[4]) { // right arm
+                            child.rotation.x = -runCycle;
+                        } else if (child === playerGroup.children[5]) { // left leg
+                            child.rotation.x = -runCycle * 0.8;
+                        } else if (child === playerGroup.children[6]) { // right leg
+                            child.rotation.x = runCycle * 0.8;
+                        }
+                    });
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ==================== WINDOW RESIZE ====================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation loop
+        animate();
+    </script>
+</body>
+</html>
